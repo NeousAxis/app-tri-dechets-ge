@@ -112,12 +112,72 @@
             }
         ];
 
-        const categoriesSpeciales = {
-            "Ordures ménagères": ["Mouchoirs usagés", "Litière pour chat", "Couches", "Emballages souillés", "Mégots de cigarette"],
-            "Compost": ["Épluchures de fruits et légumes", "Marc de café", "Sachets de thé"],
-            "Déchets électroniques": ["Téléphones", "Ordinateurs", "Tablettes", "Électroménager"],
-            "Déchets spéciaux": ["Peintures", "Solvants", "Pesticides", "Ampoules fluorescentes"],
-            "Recyclables": ["Bouteilles en plastique", "Boîtes de conserve", "Journaux", "Magazines"]
+        const baseDeDonneesDechets = {
+            "papier": {
+                categorie: "Recyclables",
+                poubelle: "Poubelle bleue ou conteneur bleu",
+                instructions: "Déposez le papier dans la poubelle bleue ou le conteneur bleu. Assurez-vous qu'il soit propre et sec."
+            },
+            "carton": {
+                categorie: "Recyclables",
+                poubelle: "Poubelle bleue ou conteneur bleu",
+                instructions: "Pliez les cartons et déposez-les dans la poubelle bleue ou le conteneur bleu."
+            },
+            "verre": {
+                categorie: "Recyclables",
+                poubelle: "Conteneur vert",
+                instructions: "Déposez les bouteilles et bocaux en verre dans le conteneur vert. Retirez les bouchons et couvercles."
+            },
+            "plastique": {
+                categorie: "Recyclables",
+                poubelle: "Conteneur jaune",
+                instructions: "Déposez les emballages plastiques dans le conteneur jaune. Rincez-les avant de les jeter."
+            },
+            "terreau": {
+                categorie: "Déchets verts",
+                poubelle: "Bac à compost, collecte des déchets verts ou déchetterie",
+                instructions: "Le terreau usagé peut être composté, placé dans la collecte des déchets verts, apporté à la déchetterie ou réutilisé pour d'autres plantes."
+            },          
+            "organique": {
+                categorie: "Compostable",
+                poubelle: "Poubelle verte ou composteur",
+                instructions: "Déposez les déchets organiques dans la poubelle verte ou dans votre composteur personnel."
+            },
+            "pile": {
+                categorie: "Déchets spéciaux",
+                poubelle: "Points de collecte spécifiques",
+                instructions: "Rapportez les piles usagées dans les points de collecte en magasin ou en déchetterie."
+            },
+            "électronique": {
+                categorie: "Déchets spéciaux",
+                poubelle: "Points de collecte spécifiques",
+                instructions: "Rapportez les appareils électroniques dans les points de collecte en magasin ou en déchetterie."
+            },
+            "médicament": {
+                categorie: "Déchets spéciaux",
+                poubelle: "Pharmacie",
+                instructions: "Rapportez les médicaments périmés ou non utilisés à votre pharmacie."
+            },
+            "textile": {
+                categorie: "Recyclables",
+                poubelle: "Points de collecte spécifiques",
+                instructions: "Déposez les textiles en bon état dans les conteneurs de collecte prévus à cet effet."
+            },
+            "huile": {
+                categorie: "Déchets spéciaux",
+                poubelle: "Points de collecte spécifiques",
+                instructions: "Rapportez les huiles usagées en déchetterie. Ne les jetez jamais dans l'évier ou les toilettes."
+            },
+            "ampoule": {
+                categorie: "Déchets spéciaux",
+                poubelle: "Points de collecte spécifiques",
+                instructions: "Rapportez les ampoules dans les points de collecte en magasin ou en déchetterie."
+            },
+            "bouchon liège": {
+                categorie: "Recyclables",
+                poubelle: "Points de collecte spécifiques",
+                instructions: "Certains points de collecte acceptent les bouchons de liège pour le recyclage. Sinon, jetez-les dans les ordures ménagères (poubelle noire)."
+            }
         };
 
         let map = L.map('carte').setView([46.2044, 6.1432], 13);
@@ -146,26 +206,36 @@
             const resultats = document.getElementById('resultats');
             resultats.innerHTML = '';
 
-            let trouves = pointsDeCollecte.filter(point => 
-                point.types.some(type => type.toLowerCase().includes(recherche))
-            );
+            let infoTrouvee = false;
 
-            if (trouves.length === 0) {
-                for (let categorie in categoriesSpeciales) {
-                    if (categoriesSpeciales[categorie].some(item => item.toLowerCase().includes(recherche))) {
-                        resultats.innerHTML = `<p>"${recherche}" fait partie de la catégorie ${categorie}.</p>`;
-                        if (categorie === "Ordures ménagères") {
-                            resultats.innerHTML += `<p>Les ${recherche} doivent être jetés dans les ordures ménagères. Assurez-vous qu'ils sont bien éteints avant de les jeter pour éviter tout risque d'incendie.</p>`;
-                        }
-                        return;
-                    }
+            for (let dechet in baseDeDonneesDechets) {
+                if (recherche.includes(dechet)) {
+                    const info = baseDeDonneesDechets[dechet];
+                    resultats.innerHTML += `
+                        <p><strong>${dechet.charAt(0).toUpperCase() + dechet.slice(1)}</strong></p>
+                        <p>Catégorie: ${info.categorie}</p>
+                        <p>Poubelle: ${info.poubelle}</p>
+                        <p>Instructions: ${info.instructions}</p>
+                    `;
+                    infoTrouvee = true;
+                    break;
                 }
-                resultats.innerHTML = `<p>Aucune information spécifique trouvée pour "${recherche}". Veuillez vérifier l'orthographe ou essayer un terme plus général. Pour les déchets non listés, ils vont généralement dans les ordures ménagères, mais vérifiez auprès des autorités locales pour des instructions spécifiques.</p>`;
-            } else {
-                trouves.forEach(point => {
-                    resultats.innerHTML += `<p><strong>${point.nom}</strong> - Types de déchets acceptés: ${point.types.join(', ')}</p>`;
-                });
-                afficherPoints(trouves);
+            }
+
+            if (!infoTrouvee) {
+                let trouves = pointsDeCollecte.filter(point => 
+                    point.types.some(type => type.toLowerCase().includes(recherche))
+                );
+
+                if (trouves.length > 0) {
+                    resultats.innerHTML = "<h3>Points de collecte correspondants :</h3>";
+                    trouves.forEach(point => {
+                        resultats.innerHTML += `<p><strong>${point.nom}</strong> - Types de déchets acceptés: ${point.types.join(', ')}</p>`;
+                    });
+                    afficherPoints(trouves);
+                } else {
+                    resultats.innerHTML = `<p>Aucune information spécifique trouvée pour "${recherche}". Pour les déchets non listés, ils vont généralement dans les ordures ménagères (poubelle noire). Vérifiez auprès des autorités locales pour des instructions spécifiques sur le site web officiel de la ville de Genève : <a href="https://www.geneve.ch/fr/themes/proprete-voirie-dechets" target="_blank">https://www.geneve.ch/fr/themes/proprete-voirie-dechets</a></p>`;
+                }
             }
         }
 

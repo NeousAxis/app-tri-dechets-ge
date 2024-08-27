@@ -77,6 +77,21 @@
             font-weight: bold;
             color: #2e7d32;
         }
+        #locateButton {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #locateButton:hover {
+            background-color: #1976D2;
+        }
     </style>
 </head>
 <body>
@@ -100,6 +115,7 @@
         <div id="result"></div>
 
         <h2>Points de collecte proches</h2>
+        <button id="locateButton">Me localiser et trouver les points de collecte proches</button>
         <div id="map"></div>
     </div>
 
@@ -145,11 +161,22 @@
             "mouchoir en papier usagé": "Ordures ménagères"
         };
 
-        // Points de collecte fictifs
+        // Points de collecte à Genève (coordonnées approximatives)
         const pointsDeCollecte = [
-            { nom: "Point de collecte 1", lat: 46.2044, lon: 6.1432, type: "Recyclables" },
-            { nom: "Point de collecte 2", lat: 46.2104, lon: 6.1480, type: "Déchets électroniques" },
-            { nom: "Point de collecte 3", lat: 46.1984, lon: 6.1384, type: "Déchets dangereux" },
+            { nom: "Écopoint Plainpalais", lat: 46.1983, lon: 6.1425, type: "Recyclables" },
+            { nom: "Déchetterie des Châtelaines", lat: 46.2128, lon: 6.1099, type: "Recyclables" },
+            { nom: "Point de recyclage Eaux-Vives", lat: 46.2031, lon: 6.1631, type: "Recyclables" },
+            { nom: "Centre de tri Jonction", lat: 46.2003, lon: 6.1306, type: "Recyclables" },
+            { nom: "Écopoint Pâquis", lat: 46.2107, lon: 6.1475, type: "Recyclables" },
+            { nom: "Point de collecte électronique Servette", lat: 46.2089, lon: 6.1337, type: "Déchets électroniques" },
+            { nom: "Déchetterie mobile Champel", lat: 46.1900, lon: 6.1556, type: "Déchets électroniques" },
+            { nom: "Centre de recyclage Saint-Jean", lat: 46.2072, lon: 6.1181, type: "Déchets électroniques" },
+            { nom: "Point de compostage Bois-de-la-Bâtie", lat: 46.1942, lon: 6.1261, type: "Déchets organiques" },
+            { nom: "Jardin communautaire des Cropettes", lat: 46.2137, lon: 6.1402, type: "Déchets organiques" },
+            { nom: "Site de compostage Parc Bertrand", lat: 46.1909, lon: 6.1530, type: "Déchets organiques" },
+            { nom: "Point de collecte spéciale Acacias", lat: 46.1950, lon: 6.1326, type: "Déchets dangereux" },
+            { nom: "Centre de tri des Vernets", lat: 46.1981, lon: 6.1300, type: "Déchets dangereux" },
+            { nom: "Déchetterie mobile Petit-Saconnex", lat: 46.2237, lon: 6.1268, type: "Déchets dangereux" }
         ];
 
         function rechercherDechet(objet) {
@@ -174,6 +201,15 @@
             const searchForm = document.getElementById('searchForm');
             const searchInput = document.getElementById('searchInput');
             const resultDiv = document.getElementById('result');
+            const locateButton = document.getElementById('locateButton');
+
+            let map = L.map('map').setView([46.2044, 6.1432], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            let markers = [];
+            let userMarker;
 
             // Ajouter les options au menu déroulant
             for (let categorie in categoriesDechets) {
@@ -213,14 +249,6 @@
                 }
             });
 
-            // Initialiser la carte
-            let map = L.map('map').setView([46.2044, 6.1432], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            let markers = [];
-
             function addMarkers() {
                 pointsDeCollecte.forEach(point => {
                     let marker = L.marker([point.lat, point.lon])
@@ -248,6 +276,62 @@
                 markers = [];
                 addMarkers();
             }
+
+            function distance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Rayon de la Terre en km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            function findNearestPoints(lat, lon) {
+                return pointsDeCollecte
+                    .map(point => ({
+                        ...point,
+                        distance: distance(lat, lon, point.lat, point.lon)
+                    }))
+                    .sort((a, b) => a.distance - b.distance)
+                    .slice(0, 5);
+            }
+
+            locateButton.addEventListener('click', function() {
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+
+                        if (userMarker) {
+                            map.removeLayer(userMarker);
+                        }
+                        userMarker = L.marker([lat, lon], {icon: L.divIcon({className: 'user-marker'})}).addTo(map);
+                        map.setView([lat, lon], 15);
+
+                        const nearestPoints = findNearestPoints(lat, lon);
+
+                        markers.forEach(marker => map.removeLayer(marker));
+                        markers = [];
+
+                        nearestPoints.forEach(point => {
+                            let marker = L.marker([point.lat, point.lon])
+                                .bindPopup(`<b>${point.nom}</b><br>Type: ${point.type}<br>Distance: ${point.distance.toFixed(2)} km`);
+                            markers.push(marker);
+                            marker.addTo(map);
+                        });
+
+                        let resultHTML = "<h3>Points de collecte les plus proches :</h3>";
+                        nearestPoints.forEach(point => {
+                            resultHTML += `<p><b>${point.nom}</b> (${point.type}) - Distance: ${point.distance.toFixed(2)} km</p>`;
+                        });
+                        resultDiv.innerHTML = resultHTML;
+                    });
+                } else {
+                    alert("La géolocalisation n'est pas supportée par votre navigateur.");
+                }
+            });
 
             addMarkers();
         });

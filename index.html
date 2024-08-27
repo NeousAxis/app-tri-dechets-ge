@@ -19,12 +19,23 @@
             font-size: 1.2em;
             margin-bottom: 10px;
         }
-        #recherche {
-            width: calc(100% - 22px);
-            padding: 8px;
+        #recherche-container {
+            display: flex;
             margin-bottom: 10px;
+        }
+        #recherche {
+            flex-grow: 1;
+            padding: 8px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 4px 0 0 4px;
+        }
+        #chercher {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
         }
         #resultats {
             background-color: white;
@@ -42,7 +53,7 @@
         }
         .boutons {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             margin-bottom: 10px;
         }
         button {
@@ -62,10 +73,12 @@
 </head>
 <body>
     <h1>Eco Tri - Objectif : Genève zéro déchet à l'horizon 2025.<br>Votre participation est essentielle !</h1>
-    <input type="text" id="recherche" placeholder="Entrez un type de déchet...">
+    <div id="recherche-container">
+        <input type="text" id="recherche" placeholder="Entrez un type de déchet...">
+        <button id="chercher" onclick="rechercher()">Chercher</button>
+    </div>
     <div class="boutons">
         <button onclick="trouverPointsProches()">Points de collecte proches</button>
-        <button onclick="afficherTousLesPoints()">Tous les points de collecte</button>
     </div>
     <div id="resultats"></div>
     <div id="carte"></div>
@@ -100,7 +113,7 @@
         ];
 
         const categoriesSpeciales = {
-            "Ordures ménagères": ["Mouchoirs usagés", "Litière pour chat", "Couches", "Emballages souillés"],
+            "Ordures ménagères": ["Mouchoirs usagés", "Litière pour chat", "Couches", "Emballages souillés", "Mégots de cigarette"],
             "Compost": ["Épluchures de fruits et légumes", "Marc de café", "Sachets de thé"],
             "Déchets électroniques": ["Téléphones", "Ordinateurs", "Tablettes", "Électroménager"],
             "Déchets spéciaux": ["Peintures", "Solvants", "Pesticides", "Ampoules fluorescentes"],
@@ -141,18 +154,18 @@
                 for (let categorie in categoriesSpeciales) {
                     if (categoriesSpeciales[categorie].some(item => item.toLowerCase().includes(recherche))) {
                         resultats.innerHTML = `<p>"${recherche}" fait partie de la catégorie ${categorie}.</p>`;
+                        if (categorie === "Ordures ménagères") {
+                            resultats.innerHTML += `<p>Les ${recherche} doivent être jetés dans les ordures ménagères. Assurez-vous qu'ils sont bien éteints avant de les jeter pour éviter tout risque d'incendie.</p>`;
+                        }
                         return;
                     }
                 }
-            }
-
-            if (trouves.length > 0) {
+                resultats.innerHTML = `<p>Aucune information spécifique trouvée pour "${recherche}". Veuillez vérifier l'orthographe ou essayer un terme plus général. Pour les déchets non listés, ils vont généralement dans les ordures ménagères, mais vérifiez auprès des autorités locales pour des instructions spécifiques.</p>`;
+            } else {
                 trouves.forEach(point => {
                     resultats.innerHTML += `<p><strong>${point.nom}</strong> - Types de déchets acceptés: ${point.types.join(', ')}</p>`;
                 });
                 afficherPoints(trouves);
-            } else {
-                resultats.innerHTML = `<p>Aucun résultat spécifique trouvé pour "${recherche}". Veuillez vérifier l'orthographe ou essayer un terme plus général. Pour les déchets non listés, ils vont généralement dans les ordures ménagères, mais vérifiez auprès des autorités locales pour des instructions spécifiques.</p>`;
             }
         }
 
@@ -194,16 +207,15 @@
             return R * c;
         }
 
-        function afficherTousLesPoints() {
-            afficherPoints(pointsDeCollecte);
-            let resultats = document.getElementById('resultats');
-            resultats.innerHTML = "<h3>Tous les points de collecte :</h3>";
-            pointsDeCollecte.forEach(point => {
-                resultats.innerHTML += `<p><strong>${point.nom}</strong><br>Types de déchets: ${point.types.join(', ')}</p>`;
-            });
-        }
+        // Afficher tous les points de collecte par défaut
+        afficherPoints(pointsDeCollecte);
 
-        document.getElementById('recherche').addEventListener('input', rechercher);
+        // Ajouter l'événement pour la touche Enter
+        document.getElementById('recherche').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                rechercher();
+            }
+        });
     </script>
 </body>
 </html>

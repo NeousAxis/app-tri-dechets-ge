@@ -3,288 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eco Tri - Genève zéro déchet 2025</title>
+    <title>Eco Tri - Guide de Tri des Déchets à Genève</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
         body {
             font-family: Arial, sans-serif;
-            line-height: 1.4;
+            line-height: 1.6;
             margin: 0;
-            padding: 10px;
-            background-color: #f0f0f0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
             color: #333;
-        }
-        h1 {
-            color: #2c3e50;
             text-align: center;
-            font-size: 1.2em;
-            margin-bottom: 10px;
         }
-        #recherche-container {
+        #searchForm {
             display: flex;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
         }
-        #recherche {
+        #searchInput {
             flex-grow: 1;
-            padding: 8px;
+            padding: 10px;
+            font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 4px 0 0 4px;
         }
-        #chercher {
-            padding: 8px 15px;
-            background-color: #3498db;
+        #searchButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 0 4px 4px 0;
             cursor: pointer;
         }
-        #resultats {
-            background-color: white;
+        #searchButton:hover {
+            background-color: #45a049;
+        }
+        #result {
+            background-color: #e7f3fe;
+            border: 1px solid #d0e3f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        #categorySelect {
+            width: 100%;
             padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
             border-radius: 4px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
-            font-size: 0.9em;
+            margin-bottom: 20px;
         }
-        #carte {
-            height: 300px;
-            margin-top: 10px;
+        #map {
+            height: 400px;
+            margin-top: 20px;
+        }
+        #ecoMessage {
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            padding: 15px;
             border-radius: 4px;
-            overflow: hidden;
-        }
-        .boutons {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        button {
-            padding: 8px 15px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
-        }
-        button:hover {
-            background-color: #2980b9;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #2e7d32;
         }
     </style>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
 <body>
-    <h1>Eco Tri - Objectif : Genève zéro déchet à l'horizon 2025.<br>Votre participation est essentielle !</h1>
-    <div id="recherche-container">
-        <input type="text" id="recherche" placeholder="Entrez un type de déchet...">
-        <button id="chercher" onclick="rechercher()">Chercher</button>
+    <div class="container">
+        <h1>Eco Tri - Guide de Tri des Déchets à Genève</h1>
+        
+        <div id="ecoMessage">
+            Objectif : Genève zéro déchet à l'horizon 2025.<br>
+            Votre participation est essentielle !
+        </div>
+
+        <select id="categorySelect">
+            <option value="">Sélectionnez une catégorie</option>
+        </select>
+
+        <form id="searchForm">
+            <input type="text" id="searchInput" placeholder="Entrez un type de déchet...">
+            <button type="submit" id="searchButton">Rechercher</button>
+        </form>
+
+        <div id="result"></div>
+
+        <h2>Points de collecte proches</h2>
+        <div id="map"></div>
     </div>
-    <div class="boutons">
-        <button onclick="trouverPointsProches()">Points de collecte proches</button>
-    </div>
-    <div id="resultats"></div>
-    <div id="carte"></div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        const pointsDeCollecte = [
-            {
-                nom: "Écopoint Central",
-                lat: 46.2044,
-                lon: 6.1432,
-                types: ["Papier", "Carton", "Verre", "PET", "Aluminium", "Fer-blanc", "Piles", "Textiles", "Capsules de café"]
+        const categoriesDechets = {
+            "Recyclables": {
+                poubelle: "Conteneurs de recyclage spécifiques",
+                instructions: "Triez selon le type de matériau (papier, verre, plastique, etc.) et déposez dans les conteneurs appropriés."
             },
-            {
-                nom: "Déchetterie Municipale",
-                lat: 46.1984,
-                lon: 6.1692,
-                types: ["Déchets encombrants", "Déchets électroniques", "Déchets de jardin", "Huiles usagées", "Bois", "Métaux", "Gravats", "Pneus"]
+            "Déchets électroniques": {
+                poubelle: "Points de collecte pour déchets électroniques",
+                instructions: "Apportez aux points de collecte spécifiques ou aux magasins participants. Ne jetez jamais dans les ordures ménagères."
             },
-            {
-                nom: "Point de Recyclage Quartier",
-                lat: 46.2104,
-                lon: 6.1501,
-                types: ["Papier", "Verre", "PET", "Aluminium", "Piles"]
+            "Déchets organiques": {
+                poubelle: "Bac à compost ou collecte des déchets verts",
+                instructions: "Compostez si possible, sinon utilisez la collecte des déchets verts de votre commune."
             },
-            {
-                nom: "Centre de Tri Spécialisé",
-                lat: 46.1900,
-                lon: 6.1380,
-                types: ["Déchets spéciaux", "Produits chimiques", "Médicaments périmés", "Batteries", "Cartouches d'encre"]
-            }
-        ];
-
-        const baseDeDonneesDechets = {
-            "papier": {
-                categorie: "Recyclables",
-                poubelle: "Poubelle bleue ou conteneur bleu",
-                instructions: "Déposez le papier dans la poubelle bleue ou le conteneur bleu. Assurez-vous qu'il soit propre et sec."
+            "Déchets dangereux": {
+                poubelle: "Points de collecte spécialisés",
+                instructions: "Ne jamais jeter avec les ordures ménagères. Apportez aux points de collecte spécifiques."
             },
-            "carton": {
-                categorie: "Recyclables",
-                poubelle: "Poubelle bleue ou conteneur bleu",
-                instructions: "Pliez les cartons et déposez-les dans la poubelle bleue ou le conteneur bleu."
+            "Ordures ménagères": {
+                poubelle: "Poubelle noire",
+                instructions: "Pour les déchets non recyclables et non dangereux. Pensez à réduire ces déchets pour atteindre l'objectif zéro déchet."
             },
-            "verre": {
-                categorie: "Recyclables",
-                poubelle: "Conteneur vert",
-                instructions: "Déposez les bouteilles et bocaux en verre dans le conteneur vert. Retirez les bouchons et couvercles."
-            },
-            "plastique": {
-                categorie: "Recyclables",
-                poubelle: "Conteneur jaune",
-                instructions: "Déposez les emballages plastiques dans le conteneur jaune. Rincez-les avant de les jeter."
-            },
-            "terreau": {
-                categorie: "Déchets verts",
-                poubelle: "Bac à compost, collecte des déchets verts ou déchetterie",
-                instructions: "Le terreau usagé peut être composté, placé dans la collecte des déchets verts, apporté à la déchetterie ou réutilisé pour d'autres plantes."
-            },          
-            "organique": {
-                categorie: "Compostable",
-                poubelle: "Poubelle verte ou composteur",
-                instructions: "Déposez les déchets organiques dans la poubelle verte ou dans votre composteur personnel."
-            },
-            "pile": {
-                categorie: "Déchets spéciaux",
-                poubelle: "Points de collecte spécifiques",
-                instructions: "Rapportez les piles usagées dans les points de collecte en magasin ou en déchetterie."
-            },
-            "électronique": {
-                categorie: "Déchets spéciaux",
-                poubelle: "Points de collecte spécifiques",
-                instructions: "Rapportez les appareils électroniques dans les points de collecte en magasin ou en déchetterie."
-            },
-            "médicament": {
-                categorie: "Déchets spéciaux",
-                poubelle: "Pharmacie",
-                instructions: "Rapportez les médicaments périmés ou non utilisés à votre pharmacie."
-            },
-            "textile": {
-                categorie: "Recyclables",
-                poubelle: "Points de collecte spécifiques",
-                instructions: "Déposez les textiles en bon état dans les conteneurs de collecte prévus à cet effet."
-            },
-            "huile": {
-                categorie: "Déchets spéciaux",
-                poubelle: "Points de collecte spécifiques",
-                instructions: "Rapportez les huiles usagées en déchetterie. Ne les jetez jamais dans l'évier ou les toilettes."
-            },
-            "ampoule": {
-                categorie: "Déchets spéciaux",
-                poubelle: "Points de collecte spécifiques",
-                instructions: "Rapportez les ampoules dans les points de collecte en magasin ou en déchetterie."
-            },
-            "bouchon liège": {
-                categorie: "Recyclables",
-                poubelle: "Points de collecte spécifiques",
-                instructions: "Certains points de collecte acceptent les bouchons de liège pour le recyclage. Sinon, jetez-les dans les ordures ménagères (poubelle noire)."
+            "Autre": {
+                poubelle: "À déterminer",
+                instructions: "Vérifiez auprès des autorités locales sur le site web officiel de la ville de Genève : https://www.geneve.ch/fr/themes/proprete-voirie-dechets"
             }
         };
 
-        let map = L.map('carte').setView([46.2044, 6.1432], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        const objetsDechets = {
+            "papier": "Recyclables",
+            "bouteille en verre": "Recyclables",
+            "écouteurs téléphone": "Déchets électroniques",
+            "piles": "Déchets dangereux",
+            "restes de nourriture": "Déchets organiques",
+            "terreau": "Déchets organiques",
+            "emballage plastique": "Recyclables",
+            "ampoule": "Déchets électroniques",
+            "médicaments périmés": "Déchets dangereux",
+            "mouchoir en papier usagé": "Ordures ménagères"
+        };
 
-        let markers = [];
+        // Points de collecte fictifs
+        const pointsDeCollecte = [
+            { nom: "Point de collecte 1", lat: 46.2044, lon: 6.1432, type: "Recyclables" },
+            { nom: "Point de collecte 2", lat: 46.2104, lon: 6.1480, type: "Déchets électroniques" },
+            { nom: "Point de collecte 3", lat: 46.1984, lon: 6.1384, type: "Déchets dangereux" },
+        ];
 
-        function afficherPoints(points) {
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
-            points.forEach(point => {
-                let marker = L.marker([point.lat, point.lon])
-                    .addTo(map)
-                    .bindPopup(`<b>${point.nom}</b><br>Types de déchets: ${point.types.join(', ')}`);
-                markers.push(marker);
-            });
-            if (points.length > 0) {
-                map.fitBounds(L.featureGroup(markers).getBounds().pad(0.1));
-            }
-        }
-
-        function rechercher() {
-            const recherche = document.getElementById('recherche').value.toLowerCase();
-            const resultats = document.getElementById('resultats');
-            resultats.innerHTML = '';
-
-            let infoTrouvee = false;
-
-            for (let dechet in baseDeDonneesDechets) {
-                if (recherche.includes(dechet)) {
-                    const info = baseDeDonneesDechets[dechet];
-                    resultats.innerHTML += `
-                        <p><strong>${dechet.charAt(0).toUpperCase() + dechet.slice(1)}</strong></p>
-                        <p>Catégorie: ${info.categorie}</p>
-                        <p>Poubelle: ${info.poubelle}</p>
-                        <p>Instructions: ${info.instructions}</p>
-                    `;
-                    infoTrouvee = true;
-                    break;
-                }
-            }
-
-            if (!infoTrouvee) {
-                let trouves = pointsDeCollecte.filter(point => 
-                    point.types.some(type => type.toLowerCase().includes(recherche))
-                );
-
-                if (trouves.length > 0) {
-                    resultats.innerHTML = "<h3>Points de collecte correspondants :</h3>";
-                    trouves.forEach(point => {
-                        resultats.innerHTML += `<p><strong>${point.nom}</strong> - Types de déchets acceptés: ${point.types.join(', ')}</p>`;
-                    });
-                    afficherPoints(trouves);
-                } else {
-                    resultats.innerHTML = `<p>Aucune information spécifique trouvée pour "${recherche}". Pour les déchets non listés, ils vont généralement dans les ordures ménagères (poubelle noire). Vérifiez auprès des autorités locales pour des instructions spécifiques sur le site web officiel de la ville de Genève : <a href="https://www.geneve.ch/fr/themes/proprete-voirie-dechets" target="_blank">https://www.geneve.ch/fr/themes/proprete-voirie-dechets</a></p>`;
-                }
-            }
-        }
-
-        function trouverPointsProches() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    let lat = position.coords.latitude;
-                    let lon = position.coords.longitude;
-                    let pointsProches = pointsDeCollecte.sort((a, b) => {
-                        let distA = distance(lat, lon, a.lat, a.lon);
-                        let distB = distance(lat, lon, b.lat, b.lon);
-                        return distA - distB;
-                    }).slice(0, 3);  // Prend les 3 points les plus proches
-
-                    afficherPoints(pointsProches);
-                    
-                    let resultats = document.getElementById('resultats');
-                    resultats.innerHTML = "<h3>Points de collecte les plus proches :</h3>";
-                    pointsProches.forEach(point => {
-                        let dist = distance(lat, lon, point.lat, point.lon).toFixed(2);
-                        resultats.innerHTML += `<p><strong>${point.nom}</strong> - Distance: ${dist} km<br>Types de déchets: ${point.types.join(', ')}</p>`;
-                    });
-                }, function(error) {
-                    alert("Erreur de géolocalisation : " + error.message);
-                });
+        function rechercherDechet(objet) {
+            objet = objet.toLowerCase();
+            if (objet in objetsDechets) {
+                const categorie = objetsDechets[objet];
+                const infoCategorie = categoriesDechets[categorie];
+                return `${objet.charAt(0).toUpperCase() + objet.slice(1)} : 
+                        Catégorie : ${categorie}
+                        ${infoCategorie.poubelle}
+                        ${infoCategorie.instructions}
+                        N'oubliez pas : votre participation est cruciale pour atteindre l'objectif zéro déchet de Genève !`;
             } else {
-                alert("La géolocalisation n'est pas supportée par votre navigateur.");
+                return `Aucune information spécifique trouvée pour "${objet}". 
+                        ${categoriesDechets["Autre"].instructions}
+                        Pensez toujours à réduire, réutiliser et recycler pour soutenir l'objectif zéro déchet de Genève !`;
             }
         }
 
-        function distance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Rayon de la Terre en km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const categorySelect = document.getElementById('categorySelect');
+            const searchForm = document.getElementById('searchForm');
+            const searchInput = document.getElementById('searchInput');
+            const resultDiv = document.getElementById('result');
 
-        // Afficher tous les points de collecte par défaut
-        afficherPoints(pointsDeCollecte);
-
-        // Ajouter l'événement pour la touche Enter
-        document.getElementById('recherche').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                rechercher();
+            // Ajouter les options au menu déroulant
+            for (let categorie in categoriesDechets) {
+                let option = document.createElement('option');
+                option.value = categorie;
+                option.textContent = categorie;
+                categorySelect.appendChild(option);
             }
+
+            // Gérer la sélection de catégorie
+            categorySelect.addEventListener('change', function() {
+                const selectedCategory = this.value;
+                if (selectedCategory) {
+                    const infoCategorie = categoriesDechets[selectedCategory];
+                    resultDiv.innerHTML = `Catégorie : ${selectedCategory}<br>
+                                           ${infoCategorie.poubelle}<br>
+                                           ${infoCategorie.instructions}<br><br>
+                                           Ensemble, contribuons à l'objectif zéro déchet de Genève !`;
+                    updateMap(selectedCategory);
+                } else {
+                    resultDiv.innerHTML = '';
+                    showAllMarkers();
+                }
+            });
+
+            // Gérer la recherche
+            searchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const searchTerm = searchInput.value.trim();
+                if (searchTerm) {
+                    resultDiv.innerHTML = rechercherDechet(searchTerm);
+                    if (searchTerm in objetsDechets) {
+                        updateMap(objetsDechets[searchTerm]);
+                    } else {
+                        showAllMarkers();
+                    }
+                }
+            });
+
+            // Initialiser la carte
+            let map = L.map('map').setView([46.2044, 6.1432], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            let markers = [];
+
+            function addMarkers() {
+                pointsDeCollecte.forEach(point => {
+                    let marker = L.marker([point.lat, point.lon])
+                        .bindPopup(`<b>${point.nom}</b><br>Type: ${point.type}`);
+                    markers.push(marker);
+                    marker.addTo(map);
+                });
+            }
+
+            function updateMap(category) {
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+                pointsDeCollecte.forEach(point => {
+                    if (point.type === category) {
+                        let marker = L.marker([point.lat, point.lon])
+                            .bindPopup(`<b>${point.nom}</b><br>Type: ${point.type}`);
+                        markers.push(marker);
+                        marker.addTo(map);
+                    }
+                });
+            }
+
+            function showAllMarkers() {
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+                addMarkers();
+            }
+
+            addMarkers();
         });
     </script>
 </body>

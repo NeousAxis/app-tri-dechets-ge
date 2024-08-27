@@ -3,224 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoTri - Objectif : Genève zéro déchet à l'horizon 2025. Votre participation est essentielle !</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <title>Eco Tri - Genève zéro déchet 2025</title>
     <style>
         body {
-            font-family: 'Roboto', sans-serif;
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
             margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #333;
         }
-        header {
-            background-color: #4CAF50;
-            color: white;
+        h1 {
+            color: #2c3e50;
             text-align: center;
-            padding: 1rem;
+            font-size: 1.2em;
+            margin-bottom: 10px;
         }
-        main {
-            display: flex;
-            flex: 1;
-        }
-        #map {
-            flex: 2;
-            height: 100%;
-        }
-        #sidebar {
-            flex: 1;
-            padding: 1rem;
-            background-color: #f1f1f1;
-            overflow-y: auto;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            margin-right: 0.5rem;
-        }
-        button:hover {
-            background-color: #45a049;
+        #recherche {
+            width: calc(100% - 22px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
         #resultats {
-            margin-top: 1rem;
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        #carte {
+            height: 300px;
+            margin-top: 10px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .boutons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        button:hover {
+            background-color: #2980b9;
         }
     </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
 <body>
-    <header>
-        <h1>EcoTri Genève - Horizon 2035</h1>
-    </header>
-    <main>
-        <div id="map"></div>
-        <div id="sidebar">
-            <input type="text" id="recherche" placeholder="Rechercher un déchet...">
-            <button onclick="rechercherDechet()">Rechercher</button>
-            <button onclick="geolocatePointsDeCollecte()">Géolocaliser points de collecte proches</button>
-            <div id="resultats"></div>
-        </div>
-    </main>
+    <h1>Eco Tri - Objectif : Genève zéro déchet à l'horizon 2025.<br>Votre participation est essentielle !</h1>
+    <input type="text" id="recherche" placeholder="Entrez un type de déchet...">
+    <div class="boutons">
+        <button onclick="trouverPointsProches()">Points de collecte proches</button>
+        <button onclick="afficherTousLesPoints()">Tous les points de collecte</button>
+    </div>
+    <div id="resultats"></div>
+    <div id="carte"></div>
 
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        const dechets = {
-            "pile": "Piles",
-            "batterie": "Piles",
-            "ampoule": "Ampoules",
-            "lampe": "Ampoules",
-            "cartouche": "Cartouches d'encre",
-            "encre": "Cartouches d'encre",
-            "ordinateur": "Électronique",
-            "téléphone": "Électronique",
-            "électroménager": "Électronique",
-            "café": "Capsules de café",
-            "capsule": "Capsules de café",
-            "verre": "Verre",
-            "bouteille": "Verre",
-            "papier": "Papier/Carton",
-            "carton": "Papier/Carton",
-            "plastique": "Plastique",
-            "métal": "Métal",
-            "aluminium": "Métal",
-            "organique": "Déchets organiques",
-            "compost": "Déchets organiques"
-        };
-
-        const informations = {
-            "Piles": "Les piles et batteries usagées doivent être recyclées pour éviter la pollution. Déposez-les dans les points de collecte dédiés.",
-            "Ampoules": "Les ampoules contiennent des matériaux recyclables. Ne les jetez pas à la poubelle, apportez-les aux points de collecte.",
-            "Cartouches d'encre": "Les cartouches d'encre peuvent être rechargées ou recyclées. Déposez-les dans les magasins participants ou les points de collecte.",
-            "Électronique": "Les appareils électroniques contiennent des matériaux précieux et des substances dangereuses. Recyclez-les dans les points de collecte spécialisés.",
-            "Capsules de café": "Les capsules de café en aluminium sont recyclables. Déposez-les dans les points de collecte dédiés ou dans certains magasins.",
-            "Verre": "Le verre est 100% recyclable. Triez-le par couleur et déposez-le dans les conteneurs à verre.",
-            "Papier/Carton": "Le papier et le carton sont facilement recyclables. Déposez-les dans les conteneurs bleus ou aux points de collecte.",
-            "Plastique": "Certains plastiques sont recyclables. Vérifiez les consignes locales et déposez-les dans les conteneurs appropriés.",
-            "Métal": "Les métaux sont recyclables à l'infini. Déposez les canettes, boîtes de conserve et autres objets métalliques dans les points de collecte.",
-            "Déchets organiques": "Les déchets organiques peuvent être compostés. Utilisez un composteur individuel ou les points de collecte communaux."
-        };
-
         const pointsDeCollecte = [
-            { nom: "ESREC Site de Châtillon", lat: 46.1761, lon: 6.0778, types: ["Tous types de déchets"] },
-            { nom: "ESREC La Praille", lat: 46.1832, lon: 6.1352, types: ["Tous types de déchets"] },
-            { nom: "Coop City Genève", lat: 46.2022, lon: 6.1424, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Rive", lat: 46.2008, lon: 6.1554, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Interdiscount Plainpalais", lat: 46.1969, lon: 6.1411, types: ["Cartouches d'encre", "Électronique", "Piles", "Ampoules"] },
-            { nom: "MediaMarkt Genève", lat: 46.2180, lon: 6.1194, types: ["Cartouches d'encre", "Électronique", "Piles", "Ampoules"] },
-            { nom: "Manor Genève", lat: 46.2029, lon: 6.1429, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique"] },
-            { nom: "Fnac Rive", lat: 46.2012, lon: 6.1537, types: ["Cartouches d'encre", "Piles", "Électronique"] },
-            { nom: "Digitec Galaxus", lat: 46.2067, lon: 6.1392, types: ["Cartouches d'encre", "Électronique", "Piles", "Ampoules"] },
-            { nom: "Conforama Genève", lat: 46.1936, lon: 6.1385, types: ["Électronique", "Piles", "Ampoules"] },
-            { nom: "IKEA Vernier", lat: 46.2172, lon: 6.0751, types: ["Ampoules", "Piles"] },
-            { nom: "Migros Balexert", lat: 46.2172, lon: 6.1103, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Coop Eaux-Vives 2000", lat: 46.2022, lon: 6.1621, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Plainpalais", lat: 46.1978, lon: 6.1416, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Servette", lat: 46.2118, lon: 6.1316, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Charmilles", lat: 46.2092, lon: 6.1226, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Jonction", lat: 46.1998, lon: 6.1339, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Carouge", lat: 46.1812, lon: 6.1396, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Meyrin", lat: 46.2308, lon: 6.0742, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Coop Onex", lat: 46.1847, lon: 6.1060, types: ["Cartouches d'encre", "Piles", "Ampoules", "Capsules de café"] },
-            { nom: "Migros Cornavin", lat: 46.2101, lon: 6.1421, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Plainpalais", lat: 46.1969, lon: 6.1415, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Charmilles", lat: 46.2095, lon: 6.1231, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Servette", lat: 46.2120, lon: 6.1308, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Carouge", lat: 46.1812, lon: 6.1389, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Meyrin", lat: 46.2315, lon: 6.0745, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Onex", lat: 46.1845, lon: 6.1058, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Vernier", lat: 46.2139, lon: 6.0850, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] },
-            { nom: "Migros Lancy", lat: 46.1922, lon: 6.1236, types: ["Cartouches d'encre", "Piles", "Ampoules", "Électronique", "Capsules de café"] }
+            {
+                nom: "Écopoint Central",
+                lat: 46.2044,
+                lon: 6.1432,
+                types: ["Papier", "Carton", "Verre", "PET", "Aluminium", "Fer-blanc", "Piles", "Textiles", "Capsules de café"]
+            },
+            {
+                nom: "Déchetterie Municipale",
+                lat: 46.1984,
+                lon: 6.1692,
+                types: ["Déchets encombrants", "Déchets électroniques", "Déchets de jardin", "Huiles usagées", "Bois", "Métaux", "Gravats", "Pneus"]
+            },
+            {
+                nom: "Point de Recyclage Quartier",
+                lat: 46.2104,
+                lon: 6.1501,
+                types: ["Papier", "Verre", "PET", "Aluminium", "Piles"]
+            },
+            {
+                nom: "Centre de Tri Spécialisé",
+                lat: 46.1900,
+                lon: 6.1380,
+                types: ["Déchets spéciaux", "Produits chimiques", "Médicaments périmés", "Batteries", "Cartouches d'encre"]
+            }
         ];
 
-        var map = L.map('map').setView([46.2044, 6.1432], 12);
+        const categoriesSpeciales = {
+            "Ordures ménagères": ["Mouchoirs usagés", "Litière pour chat", "Couches", "Emballages souillés"],
+            "Compost": ["Épluchures de fruits et légumes", "Marc de café", "Sachets de thé"],
+            "Déchets électroniques": ["Téléphones", "Ordinateurs", "Tablettes", "Électroménager"],
+            "Déchets spéciaux": ["Peintures", "Solvants", "Pesticides", "Ampoules fluorescentes"],
+            "Recyclables": ["Bouteilles en plastique", "Boîtes de conserve", "Journaux", "Magazines"]
+        };
+
+        let map = L.map('carte').setView([46.2044, 6.1432], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        function rechercherDechet() {
+        let markers = [];
+
+        function afficherPoints(points) {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            points.forEach(point => {
+                let marker = L.marker([point.lat, point.lon])
+                    .addTo(map)
+                    .bindPopup(`<b>${point.nom}</b><br>Types de déchets: ${point.types.join(', ')}`);
+                markers.push(marker);
+            });
+            if (points.length > 0) {
+                map.fitBounds(L.featureGroup(markers).getBounds().pad(0.1));
+            }
+        }
+
+        function rechercher() {
             const recherche = document.getElementById('recherche').value.toLowerCase();
             const resultats = document.getElementById('resultats');
             resultats.innerHTML = '';
 
-            let categorie = '';
-            for (const [mot, cat] of Object.entries(dechets)) {
-                if (recherche.includes(mot)) {
-                    categorie = cat;
-                    break;
+            let trouves = pointsDeCollecte.filter(point => 
+                point.types.some(type => type.toLowerCase().includes(recherche))
+            );
+
+            if (trouves.length === 0) {
+                for (let categorie in categoriesSpeciales) {
+                    if (categoriesSpeciales[categorie].some(item => item.toLowerCase().includes(recherche))) {
+                        resultats.innerHTML = `<p>"${recherche}" fait partie de la catégorie ${categorie}.</p>`;
+                        return;
+                    }
                 }
             }
 
-            if (categorie) {
-                resultats.innerHTML = `<h3>Résultats pour "${recherche}":</h3>`;
-                resultats.innerHTML += `<p><strong>Catégorie :</strong> ${categorie}</p>`;
-                resultats.innerHTML += `<p><strong>Information :</strong> ${informations[categorie]}</p>`;
-                afficherPointsDeCollecte(categorie);
+            if (trouves.length > 0) {
+                trouves.forEach(point => {
+                    resultats.innerHTML += `<p><strong>${point.nom}</strong> - Types de déchets acceptés: ${point.types.join(', ')}</p>`;
+                });
+                afficherPoints(trouves);
             } else {
-                resultats.innerHTML = `<p>Aucun résultat trouvé pour "${recherche}". Essayez un autre terme.</p>`;
+                resultats.innerHTML = `<p>Aucun résultat spécifique trouvé pour "${recherche}". Veuillez vérifier l'orthographe ou essayer un terme plus général. Pour les déchets non listés, ils vont généralement dans les ordures ménagères, mais vérifiez auprès des autorités locales pour des instructions spécifiques.</p>`;
             }
         }
 
-        function afficherPointsDeCollecte(categorie) {
-            map.eachLayer(function (layer) {
-                if (layer instanceof L.Marker) {
-                    map.removeLayer(layer);
-                }
-            });
-
-            pointsDeCollecte.forEach(point => {
-                if (point.types.includes(categorie) || point.types.includes("Tous types de déchets") || categorie === "Tous") {
-                    L.marker([point.lat, point.lon])
-                        .addTo(map)
-                        .bindPopup(`<b>${point.nom}</b><br>Types de déchets acceptés: ${point.types.join(', ')}`);
-                }
-            });
-        }
-
-        function geolocatePointsDeCollecte() {
+        function trouverPointsProches() {
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    var lat = position.coords.latitude;
-                    var lon = position.coords.longitude;
-                    map.setView([lat, lon], 15);
-                    L.marker([lat, lon]).addTo(map)
-                        .bindPopup('Votre position')
-                        .openPopup();
-                    afficherPointsProches(lat, lon);
+                    let lat = position.coords.latitude;
+                    let lon = position.coords.longitude;
+                    let pointsProches = pointsDeCollecte.sort((a, b) => {
+                        let distA = distance(lat, lon, a.lat, a.lon);
+                        let distB = distance(lat, lon, b.lat, b.lon);
+                        return distA - distB;
+                    }).slice(0, 3);  // Prend les 3 points les plus proches
+
+                    afficherPoints(pointsProches);
+                    
+                    let resultats = document.getElementById('resultats');
+                    resultats.innerHTML = "<h3>Points de collecte les plus proches :</h3>";
+                    pointsProches.forEach(point => {
+                        let dist = distance(lat, lon, point.lat, point.lon).toFixed(2);
+                        resultats.innerHTML += `<p><strong>${point.nom}</strong> - Distance: ${dist} km<br>Types de déchets: ${point.types.join(', ')}</p>`;
+                    });
+                }, function(error) {
+                    alert("Erreur de géolocalisation : " + error.message);
                 });
             } else {
                 alert("La géolocalisation n'est pas supportée par votre navigateur.");
             }
         }
 
-        function afficherPointsProches(lat, lon) {
-            var pointsProches = pointsDeCollecte.map(point => {
-                var distance = Math.sqrt(Math.pow(lat - point.lat, 2) + Math.pow(lon - point.lon, 2));
-                return {...point, distance};
-            }).sort((a, b) => a.distance - b.distance).slice(0, 5);
+        function distance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Rayon de la Terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
 
-            map.eachLayer(function (layer) {
-                if (layer instanceof L.Marker) {
-                    map.removeLayer(layer);
-                }
-            });
-
-            var resultats = document.getElementById('resultats');
-            resultats.innerHTML = '<h3>Points de collecte les plus proches :</h3>';
-            pointsProches.forEach(point => {
-                resultats.innerHTML += `<p><strong>${point.nom}</strong><br>Types de déchets : ${point.types.join(', ')}</p>`;
-                L.marker([point.lat, point.lon])
-                    .addTo(map)
-                    .bindPopup(`<b>${point.nom}</b><br>Types de déchets acceptés: ${point.types.join(', ')}`);
+        function afficherTousLesPoints() {
+            afficherPoints(pointsDeCollecte);
+            let resultats = document.getElementById('resultats');
+            resultats.innerHTML = "<h3>Tous les points de collecte :</h3>";
+            pointsDeCollecte.forEach(point => {
+                resultats.innerHTML += `<p><strong>${point.nom}</strong><br>Types de déchets: ${point.types.join(', ')}</p>`;
             });
         }
+
+        document.getElementById('recherche').addEventListener('input', rechercher);
     </script>
 </body>
 </html>

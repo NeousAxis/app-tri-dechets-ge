@@ -95,20 +95,28 @@
 
         const pointsCollecte = {
             "Recyclables": [
-                {nom: "Écopoint Pâquis", lat: 46.2107, lon: 6.1479},
-                {nom: "Écopoint Eaux-Vives", lat: 46.2012, lon: 6.1660}
+                {nom: "Écopoint Pâquis", lat: 46.210698, lon: 6.147926},
+                {nom: "Écopoint Eaux-Vives", lat: 46.201235, lon: 6.166046},
+                {nom: "Écopoint Plainpalais", lat: 46.198131, lon: 6.141443},
+                {nom: "Écopoint Jonction", lat: 46.203422, lon: 6.129949}
             ],
             "Déchets électroniques": [
-                {nom: "Point de collecte Plainpalais", lat: 46.1981, lon: 6.1414},
-                {nom: "Recyclerie La Jonction", lat: 46.2034, lon: 6.1299}
+                {nom: "Point de collecte Plainpalais", lat: 46.198131, lon: 6.141443},
+                {nom: "Recyclerie La Jonction", lat: 46.203422, lon: 6.129949},
+                {nom: "MediaMarkt Genève", lat: 46.204714, lon: 6.144518},
+                {nom: "Fnac Rive", lat: 46.201701, lon: 6.152493}
             ],
             "Déchets dangereux": [
-                {nom: "Centre de tri Châtelaine", lat: 46.2145, lon: 6.1142},
-                {nom: "Déchetterie des Charmilles", lat: 46.2089, lon: 6.1225}
+                {nom: "Centre de tri Châtelaine", lat: 46.214549, lon: 6.114233},
+                {nom: "Déchetterie des Charmilles", lat: 46.208957, lon: 6.122582},
+                {nom: "Pharmacie Principale", lat: 46.202618, lon: 6.146915},
+                {nom: "Espace récupération Vernier", lat: 46.219676, lon: 6.083023}
             ],
             "Déchets organiques": [
-                {nom: "Compostière de Châtillon", lat: 46.1740, lon: 6.0778},
-                {nom: "Bac vert Servette", lat: 46.2081, lon: 6.1338}
+                {nom: "Compostière de Châtillon", lat: 46.174037, lon: 6.077879},
+                {nom: "Bac vert Servette", lat: 46.208114, lon: 6.133837},
+                {nom: "Bac vert Plainpalais", lat: 46.197562, lon: 6.140687},
+                {nom: "Bac vert Eaux-Vives", lat: 46.200580, lon: 6.165724}
             ]
         };
 
@@ -159,17 +167,30 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            // Ajouter le marqueur de l'utilisateur (position par défaut au centre de Genève)
-            userMarker = L.marker([46.2044, 6.1432], {
-                icon: L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                })
-            }).addTo(map).bindPopup("Votre position").openPopup();
+            // Utiliser la géolocalisation du navigateur
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    userMarker = L.marker([lat, lon], {
+                        icon: L.icon({
+                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34],
+                            shadowSize: [41, 41]
+                        })
+                    }).addTo(map).bindPopup("Votre position").openPopup();
+                    map.setView([lat, lon], 13);
+                }, function(error) {
+                    console.error("Erreur de géolocalisation :", error);
+                    userMarker = L.marker([46.2044, 6.1432]).addTo(map).bindPopup("Position par défaut (centre de Genève)").openPopup();
+                });
+            } else {
+                console.log("La géolocalisation n'est pas supportée par ce navigateur.");
+                userMarker = L.marker([46.2044, 6.1432]).addTo(map).bindPopup("Position par défaut (centre de Genève)").openPopup();
+            }
         }
 
         function afficherPointsCollecte(categorie) {
@@ -211,7 +232,7 @@
             if (pointProche) {
                 L.polyline([userLatLng, [pointProche.lat, pointProche.lon]], {color: 'red'}).addTo(map);
                 map.fitBounds(L.latLngBounds([userLatLng, [pointProche.lat, pointProche.lon]]).pad(0.1));
-                alert(`Le point de collecte le plus proche pour ${categorie} est : ${pointProche.nom}`);
+                alert(`Le point de collecte le plus proche pour ${categorie} est : ${pointProche.nom} (distance : ${(distanceMin/1000).toFixed(2)} km)`);
             } else {
                 alert("Aucun point de collecte trouvé pour cette catégorie.");
             }
